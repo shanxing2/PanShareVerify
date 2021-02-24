@@ -12,6 +12,9 @@
 ## Release
 [安装包(installer package)](https://github.com/shanxing2/PanShareVerify/releases)
 
+## 使用方法
+解压后，直接运行‘PanShareVerify.exe’
+
 ## 框架版本 
 .NET 4.6.1
 
