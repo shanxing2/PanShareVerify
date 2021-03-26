@@ -20,7 +20,7 @@
 
 ## 引用
 ### NuGet  
-* 1.Install-Package System.ValueTuple -Version 4.5.0  
+* 1.Install-Package System.ValueTuple -Version 4.5.0  (已升级框架为.Net 4.8，不再需要引用此包） 
 
 ### 第三方库 
 *  1.[shanxinglib.dll](https://github.com/shanxing2/shanxinglib) 
