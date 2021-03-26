@@ -47,8 +47,8 @@ Namespace My.Resources
         End Property
         
         '''<summary>
-        '''  重写当前线程的 CurrentUICulture 属性
-        '''  重写当前线程的 CurrentUICulture 属性。
+        '''  重写当前线程的 CurrentUICulture 属性，对
+        '''  使用此强类型资源类的所有资源查找执行重写。
         '''</summary>
         <Global.System.ComponentModel.EditorBrowsableAttribute(Global.System.ComponentModel.EditorBrowsableState.Advanced)>  _
         Friend Property Culture() As Global.System.Globalization.CultureInfo

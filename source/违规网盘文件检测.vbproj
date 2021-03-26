@@ -12,7 +12,7 @@
     <AssemblyName>PanShareVerify</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <MyType>WindowsForms</MyType>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <IsWebBootstrapper>false</IsWebBootstrapper>
@@ -35,6 +35,7 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -87,9 +88,6 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\..\..\packages\System.ValueTuple.4.5.0\lib\net461\System.ValueTuple.dll</HintPath>
-    </Reference>
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
@@ -169,7 +167,6 @@
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
     <None Include="App.config" />
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.6.1">
