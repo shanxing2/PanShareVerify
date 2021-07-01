@@ -32,6 +32,7 @@ Partial Class FrmMain
         Me.Label1 = New System.Windows.Forms.Label()
         Me.chkCheckAll = New System.Windows.Forms.CheckBox()
         Me.lblStatus = New System.Windows.Forms.Label()
+        Me.Label2 = New System.Windows.Forms.Label()
         Me.cmsDirectoryInfo.SuspendLayout()
         Me.SuspendLayout()
         '
@@ -115,11 +116,24 @@ Partial Class FrmMain
         Me.lblStatus.Text = "状态"
         Me.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft
         '
+        'Label2
+        '
+        Me.Label2.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.Label2.AutoSize = True
+        Me.Label2.ForeColor = System.Drawing.Color.Red
+        Me.Label2.Location = New System.Drawing.Point(147, 17)
+        Me.Label2.Name = "Label2"
+        Me.Label2.Size = New System.Drawing.Size(641, 12)
+        Me.Label2.TabIndex = 14
+        Me.Label2.Text = "软件检测思路是先分享，再查看，查看不到就是有违规的，所以，有时候会检测不出来，因为可能要等一会才会显示违规"
+        '
         'FrmMain
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 12.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(800, 597)
+        Me.Controls.Add(Me.Label2)
         Me.Controls.Add(Me.lblStatus)
         Me.Controls.Add(Me.chkCheckAll)
         Me.Controls.Add(Me.Label1)
@@ -143,4 +157,5 @@ Partial Class FrmMain
     Friend WithEvents chkCheckAll As CheckBox
     Friend WithEvents 分享ToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents lblStatus As Label
+    Friend WithEvents Label2 As Label
 End Class
