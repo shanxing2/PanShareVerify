@@ -124,9 +124,9 @@ Partial Class FrmMain
         Me.Label2.ForeColor = System.Drawing.Color.Red
         Me.Label2.Location = New System.Drawing.Point(147, 17)
         Me.Label2.Name = "Label2"
-        Me.Label2.Size = New System.Drawing.Size(641, 12)
+        Me.Label2.Size = New System.Drawing.Size(617, 12)
         Me.Label2.TabIndex = 14
-        Me.Label2.Text = "软件检测思路是先分享，再查看，查看不到就是有违规的，所以，有时候会检测不出来，因为可能要等一会才会显示违规"
+        Me.Label2.Text = "软件检测思路是先分享，再查看，查看不到就是有违规的，所以，有时候会检测不出来，因为不是马上被检测到违规"
         '
         'FrmMain
         '
@@ -142,7 +142,7 @@ Partial Class FrmMain
         Me.Controls.Add(Me.tvDirectoryInfo)
         Me.DoubleBuffered = True
         Me.Name = "FrmMain"
-        Me.Text = "网盘违规文件检测姬"
+        Me.Text = "网盘违规文件检测姬 By 胖头鱼煲汤好好次 Q2287190283"
         Me.cmsDirectoryInfo.ResumeLayout(False)
         Me.ResumeLayout(False)
         Me.PerformLayout()

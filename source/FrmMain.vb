@@ -30,27 +30,34 @@ Public Class FrmMain
         FrmWeb.Url = "https://pan.baidu.com/disk/home?#list/path=%2F&vmode=list"
         FrmWeb.ShowDialog()
 
-        Try
-            btnLogin.Enabled = False
+
+        btnLogin.Enabled = False
 
             Dim loginedInfo = BdVerifier.GetLoginInfo(Operate.Html)
             m_BdVerifier = New BdVerifier(Operate.Cookies, loginedInfo.BdsToken, loginedInfo.BdUSS)
             Await LoadHomeDirInfoAsync()
-        Catch ex As Exception
-            Logger.WriteLine(ex)
-        Finally
-            btnLogin.Enabled = True
-        End Try
+
+        btnLogin.Enabled = True
     End Sub
 
     Private Async Function LoadHomeDirInfoAsync() As Task
         Dim getRst = Await m_BdVerifier.GetHomeDirInfoAsync
         If Not getRst.Success Then
-            Windows2.DrawTipsTask(Me, "获取网盘首页目录失败", 1000, False, False)
+            Windows2.DrawTipsTask(Me, "获取网盘首页目录失败，请联系开发者修复", 1000, False, False)
             Return
         End If
 
-        Dim root = MSJsSerializer.Deserialize(Of DirectoryEntity.Root)(getRst.Message)
+        Dim root As DirectoryEntity.Root
+        Try
+            root = MSJsSerializer.Deserialize(Of DirectoryEntity.Root)(getRst.Message)
+        Catch ex As Exception
+            Logger.WriteLine(ex, getRst.Message,,,)
+            Windows2.DrawTipsTask(Me, "获取网盘首页目录失败，请联系开发者修复", 1000, False, False)
+        End Try
+
+#Disable Warning BC42104 ' 在为变量赋值之前，变量已被使用
+        If root Is Nothing Then Return
+#Enable Warning BC42104 ' 在为变量赋值之前，变量已被使用
 
         Dim imgList As New ImageList
         imgList.Images.Add(Image.FromFile(".\res\folder.png"))
