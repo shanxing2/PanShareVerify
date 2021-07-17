@@ -11,6 +11,7 @@ Public Class FrmWeb
     ''' 需要访问的地址
     ''' </summary>
     Public Shared Property Url As String
+    Public Shared Property OperateUrl As String
 
 #Region "IDisposable Support"
     ' 要检测冗余调用
@@ -63,7 +64,7 @@ Public Class FrmWeb
         ' 消除网页加载嘟嘟声
         Web1.DisableNavigationSounds(True)
         ' 如果已经登录 就不需要再次加载登录页了
-        If Not Operate.OperateUrl.IsNullOrEmpty Then Return
+        If Not OperateUrl.IsNullOrEmpty Then Return
 
         ' 改变程序内部IE浏览器默认的版本号
         ' app.exe and app.vshost.exe
@@ -99,7 +100,6 @@ Public Class FrmWeb
         ' 启用消除网页加载嘟嘟声
         Web1.DisableNavigationSounds(False)
 
-
         ' 有 existShop= 表示登录成功
         ' 第一个可以判断主账号 第二个可以判断子账号
         ' 另外，想要操作淘宝 cookie的httponly属性为true的cookie是必须的，其他可有可无
@@ -109,18 +109,22 @@ Public Class FrmWeb
         If Web1.Document Is Nothing Then Return
         ' 经过观察，不管是在中国大陆还是在日本，有 百度网盘-全部文件#list/path=%2F&vmode=list 表示登录成功
         If Not String.IsNullOrEmpty(Web1.Document.Title) AndAlso Web1.Document.Title.IndexOf("百度网盘-全部文件") > -1 Then
-            Operate.OperateUrl = Web1.Url.AbsoluteUri
-            Operate.Html = Web1.Document.Body.InnerHtml
+            OperateUrl = Web1.Url.AbsoluteUri
 
             ' 如果已经登录 则获取cookie
-            If Not Operate.OperateUrl.IsNullOrEmpty Then
+            If Not OperateUrl.IsNullOrEmpty Then
                 ' 获取webbrowser登录成功后的cookie,需要带上登录成功后的URL
                 ' 而且 也需要从 Web1.Document.Cookie 处获取cookie，否则会漏掉一些cookie(跟Operate.OperateUrl不属于同一个域的cookie)
                 ' 不同页面，Domain不一样，视具体情况而定
-                Operate.Cookies.GetFromKeyValuePairs(Web1.Document.Cookie, Operate.OperateUrl)
-                Operate.Cookies.GetFromUrl(Operate.OperateUrl)
+                Conf2.Instance.BdVerifierConf.BdCookies.GetFromKeyValuePairs(Web1.Document.Cookie, OperateUrl)
+                Conf2.Instance.BdVerifierConf.BdCookies.GetFromUrl(OperateUrl)
 
-                HttpAsync.Instance.ReInit(Operate.Cookies)
+                HttpAsync.Instance.ReInit(Conf2.Instance.BdVerifierConf.BdCookies)
+
+                Dim html = Web1.Document.Body.InnerHtml
+                Dim loginedInfo = BdVerifier.GetLoginInfo(html)
+                Conf2.Instance.BdVerifierConf.BdsToken = loginedInfo.BdsToken
+                Conf2.Instance.BdVerifierConf.BdUSS = loginedInfo.BdUSS
             End If
         End If
     End Sub

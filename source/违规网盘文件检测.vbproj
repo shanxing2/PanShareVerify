@@ -111,12 +111,24 @@
     <Import Include="System.Threading.Tasks" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Conf.vb" />
+    <Compile Include="Conf2.vb" />
     <Compile Include="FrmMain.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FrmMain.Designer.vb">
       <DependentUpon>FrmMain.vb</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmSetting.Designer.vb">
+      <DependentUpon>FrmSetting.vb</DependentUpon>
+    </Compile>
+    <Compile Include="FrmSetting.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmShareCacheManage.Designer.vb">
+      <DependentUpon>FrmShareCacheManage.vb</DependentUpon>
+    </Compile>
+    <Compile Include="FrmShareCacheManage.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FrmWeb.Designer.vb">
@@ -142,10 +154,19 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="Operate.vb" />
+    <Compile Include="ShareResultDisplayEntity.vb">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="FrmMain.resx">
       <DependentUpon>FrmMain.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FrmSetting.resx">
+      <DependentUpon>FrmSetting.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FrmShareCacheManage.resx">
+      <DependentUpon>FrmShareCacheManage.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FrmWeb.resx">
       <DependentUpon>FrmWeb.vb</DependentUpon>

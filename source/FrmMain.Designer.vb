@@ -2,17 +2,17 @@
 Partial Class FrmMain
     Inherits System.Windows.Forms.Form
 
-    'Form 重写 Dispose，以清理组件列表。
-    <System.Diagnostics.DebuggerNonUserCode()>
-    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
-        Try
-            If disposing AndAlso components IsNot Nothing Then
-                components.Dispose()
-            End If
-        Finally
-            MyBase.Dispose(disposing)
-        End Try
-    End Sub
+    ''Form 重写 Dispose，以清理组件列表。
+    '<System.Diagnostics.DebuggerNonUserCode()>
+    'Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+    '    Try
+    '        If disposing AndAlso components IsNot Nothing Then
+    '            components.Dispose()
+    '        End If
+    '    Finally
+    '        MyBase.Dispose(disposing)
+    '    End Try
+    'End Sub
 
     'Windows 窗体设计器所必需的
     Private components As System.ComponentModel.IContainer
@@ -28,17 +28,21 @@ Partial Class FrmMain
         Me.cmsDirectoryInfo = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.检测ToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.分享ToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
+        Me.重新加载ToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.txtVerifyReport = New System.Windows.Forms.TextBox()
         Me.Label1 = New System.Windows.Forms.Label()
         Me.chkCheckAll = New System.Windows.Forms.CheckBox()
         Me.lblStatus = New System.Windows.Forms.Label()
         Me.Label2 = New System.Windows.Forms.Label()
+        Me.btnSetting = New System.Windows.Forms.Button()
+        Me.btnCancelCheck = New System.Windows.Forms.Button()
+        Me.btnCheckCache = New System.Windows.Forms.Button()
         Me.cmsDirectoryInfo.SuspendLayout()
         Me.SuspendLayout()
         '
         'btnLogin
         '
-        Me.btnLogin.Location = New System.Drawing.Point(12, 12)
+        Me.btnLogin.Location = New System.Drawing.Point(66, 14)
         Me.btnLogin.Name = "btnLogin"
         Me.btnLogin.Size = New System.Drawing.Size(75, 23)
         Me.btnLogin.TabIndex = 0
@@ -57,21 +61,27 @@ Partial Class FrmMain
         '
         'cmsDirectoryInfo
         '
-        Me.cmsDirectoryInfo.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.检测ToolStripMenuItem, Me.分享ToolStripMenuItem})
+        Me.cmsDirectoryInfo.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.检测ToolStripMenuItem, Me.分享ToolStripMenuItem, Me.重新加载ToolStripMenuItem})
         Me.cmsDirectoryInfo.Name = "cmsDirectoryInfo"
-        Me.cmsDirectoryInfo.Size = New System.Drawing.Size(101, 48)
+        Me.cmsDirectoryInfo.Size = New System.Drawing.Size(125, 70)
         '
         '检测ToolStripMenuItem
         '
         Me.检测ToolStripMenuItem.Name = "检测ToolStripMenuItem"
-        Me.检测ToolStripMenuItem.Size = New System.Drawing.Size(100, 22)
+        Me.检测ToolStripMenuItem.Size = New System.Drawing.Size(124, 22)
         Me.检测ToolStripMenuItem.Text = "检测"
         '
         '分享ToolStripMenuItem
         '
         Me.分享ToolStripMenuItem.Name = "分享ToolStripMenuItem"
-        Me.分享ToolStripMenuItem.Size = New System.Drawing.Size(100, 22)
+        Me.分享ToolStripMenuItem.Size = New System.Drawing.Size(124, 22)
         Me.分享ToolStripMenuItem.Text = "分享"
+        '
+        '重新加载ToolStripMenuItem
+        '
+        Me.重新加载ToolStripMenuItem.Name = "重新加载ToolStripMenuItem"
+        Me.重新加载ToolStripMenuItem.Size = New System.Drawing.Size(124, 22)
+        Me.重新加载ToolStripMenuItem.Text = "重新加载"
         '
         'txtVerifyReport
         '
@@ -81,7 +91,7 @@ Partial Class FrmMain
         Me.txtVerifyReport.Multiline = True
         Me.txtVerifyReport.Name = "txtVerifyReport"
         Me.txtVerifyReport.ScrollBars = System.Windows.Forms.ScrollBars.Vertical
-        Me.txtVerifyReport.Size = New System.Drawing.Size(776, 181)
+        Me.txtVerifyReport.Size = New System.Drawing.Size(776, 165)
         Me.txtVerifyReport.TabIndex = 2
         '
         'Label1
@@ -97,7 +107,7 @@ Partial Class FrmMain
         'chkCheckAll
         '
         Me.chkCheckAll.AutoSize = True
-        Me.chkCheckAll.Location = New System.Drawing.Point(93, 16)
+        Me.chkCheckAll.Location = New System.Drawing.Point(12, 18)
         Me.chkCheckAll.Name = "chkCheckAll"
         Me.chkCheckAll.Size = New System.Drawing.Size(48, 16)
         Me.chkCheckAll.TabIndex = 1
@@ -118,21 +128,52 @@ Partial Class FrmMain
         '
         'Label2
         '
-        Me.Label2.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+        Me.Label2.Anchor = CType(((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.Label2.AutoSize = True
         Me.Label2.ForeColor = System.Drawing.Color.Red
-        Me.Label2.Location = New System.Drawing.Point(147, 17)
+        Me.Label2.Location = New System.Drawing.Point(12, 576)
         Me.Label2.Name = "Label2"
         Me.Label2.Size = New System.Drawing.Size(617, 12)
         Me.Label2.TabIndex = 14
         Me.Label2.Text = "软件检测思路是先分享，再查看，查看不到就是有违规的，所以，有时候会检测不出来，因为不是马上被检测到违规"
+        '
+        'btnSetting
+        '
+        Me.btnSetting.Location = New System.Drawing.Point(228, 14)
+        Me.btnSetting.Name = "btnSetting"
+        Me.btnSetting.Size = New System.Drawing.Size(75, 23)
+        Me.btnSetting.TabIndex = 15
+        Me.btnSetting.Text = "设置"
+        Me.btnSetting.UseVisualStyleBackColor = True
+        '
+        'btnCancelCheck
+        '
+        Me.btnCancelCheck.Location = New System.Drawing.Point(309, 14)
+        Me.btnCancelCheck.Name = "btnCancelCheck"
+        Me.btnCancelCheck.Size = New System.Drawing.Size(75, 23)
+        Me.btnCancelCheck.TabIndex = 19
+        Me.btnCancelCheck.Text = "取消检测"
+        Me.btnCancelCheck.UseVisualStyleBackColor = True
+        Me.btnCancelCheck.Visible = False
+        '
+        'btnCheckCache
+        '
+        Me.btnCheckCache.Location = New System.Drawing.Point(147, 14)
+        Me.btnCheckCache.Name = "btnCheckCache"
+        Me.btnCheckCache.Size = New System.Drawing.Size(75, 23)
+        Me.btnCheckCache.TabIndex = 20
+        Me.btnCheckCache.Text = "缓存管理"
+        Me.btnCheckCache.UseVisualStyleBackColor = True
         '
         'FrmMain
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 12.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(800, 597)
+        Me.Controls.Add(Me.btnCheckCache)
+        Me.Controls.Add(Me.btnCancelCheck)
+        Me.Controls.Add(Me.btnSetting)
         Me.Controls.Add(Me.Label2)
         Me.Controls.Add(Me.lblStatus)
         Me.Controls.Add(Me.chkCheckAll)
@@ -158,4 +199,8 @@ Partial Class FrmMain
     Friend WithEvents 分享ToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents lblStatus As Label
     Friend WithEvents Label2 As Label
+    Friend WithEvents btnSetting As Button
+    Friend WithEvents btnCancelCheck As Button
+    Friend WithEvents btnCheckCache As Button
+    Friend WithEvents 重新加载ToolStripMenuItem As ToolStripMenuItem
 End Class

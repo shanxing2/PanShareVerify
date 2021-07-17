@@ -1,12 +1,15 @@
-﻿Imports System.Text
+﻿Imports System.IO
+Imports System.Text
 Imports System.Text.RegularExpressions
+
 Imports ShanXingTech
 Imports ShanXingTech.Net2
-Imports ShanXingTech.Net2.BdVerifier
+Imports ShanXingTech.Net2.BaiduNetdisk
 
 Public Class FrmMain
 #Region "字段区"
     Private WithEvents m_BdVerifier As BdVerifier
+
 #End Region
 
 #Region "构造函数"
@@ -22,23 +25,110 @@ Public Class FrmMain
         tvDirectoryInfo.ItemHeight = 20
         tvDirectoryInfo.CheckBoxes = True
 
+        ' 清楚过期缓存
+        FrmShareCacheManage.DeleteExpirationCache()
     End Sub
 #End Region
 
+#Region "IDisposable Support"
+    ' 要检测冗余调用
+    Dim isDisposed2 As Boolean = False
+
+    ''' <summary>
+    ''' 重写Dispose 以清理非托管资源
+    ''' </summary>
+    ''' <param name="disposing"></param>
+    Protected Overrides Sub Dispose(disposing As Boolean)
+        ' 窗体内的控件调用Close或者Dispose方法时，isDisposed2的值为True
+        If isDisposed2 Then Return
+
+        Try
+            ' TODO: 释放托管资源(托管对象)。
+            If disposing Then
+                If components IsNot Nothing Then
+                    components.Dispose()
+                    components = Nothing
+                End If
+
+                Conf2.Instance.Save()
+            End If
+
+            ' TODO: 释放未托管资源(未托管对象)并在以下内容中替代 Finalize()。
+            ' TODO: 将大型字段设置为 null。
+
+
+            isDisposed2 = True
+        Finally
+            MyBase.Dispose(disposing)
+        End Try
+    End Sub
+
+    '' NOTE: Leave out the finalizer altogether if this class doesn't   
+    '' own unmanaged resources itself, but leave the other methods  
+    '' exactly as they are.   
+    'Protected Overrides Sub Finalize()
+    '    Try
+    '        ' Finalizer calls Dispose(false)  
+    '        Dispose(False)
+    '    Finally
+    '        MyBase.Finalize()
+    '    End Try
+    'End Sub
+#End Region
+
+
+    Private Sub FrmMain_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        Try
+            Me.Text = If(Deployment.Application.ApplicationDeployment.IsNetworkDeployed,
+                $"{Conf2.Instance.APPName}   V{Deployment.Application.ApplicationDeployment.CurrentDeployment.CurrentVersion.ToString()}",
+                $"{Conf2.Instance.APPName}   V{Application.ProductVersion}")
+        Catch ex As Exception
+            Me.Text = $"{Conf2.Instance.APPName}   V{Application.ProductVersion}"
+#If DEBUG Then
+            ' debug模式 不记录此处的异常
+            Exit Try
+#End If
+            Logger.Debug(ex)
+        End Try
+
+#Disable Warning BC42358 ' 由于此调用不会等待，因此在调用完成前将继续执行当前方法
+        LoginAsync()
+#Enable Warning BC42358 ' 由于此调用不会等待，因此在调用完成前将继续执行当前方法
+    End Sub
+
+    Private Sub FrmMain_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
+        ' ###################### 注意 ######################
+        ' # 如果实现了IDisposble接口，则必须在 过程Protected Overrides Sub Dispose(disposing As Boolean)的
+        ' # 最后调用 MyBase.Dispose(Disposing),否则无法关闭窗体
+        ' # 20180806
+        ' ###################### 注意 ######################
+        If MessageBox.Show("确定要退出软件???", "温馨提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) = DialogResult.Cancel Then
+            e.Cancel = True
+        End If
+    End Sub
 
     Private Async Sub btnLogin_Click(sender As Object, e As EventArgs) Handles btnLogin.Click
-        FrmWeb.Url = "https://pan.baidu.com/disk/home?#list/path=%2F&vmode=list"
-        FrmWeb.ShowDialog()
+        Conf2.Instance.BdVerifierConf.BdCookies = New Net.CookieContainer
 
+        Await LoginAsync()
+    End Sub
+
+    Private Async Function LoginAsync() As Task
+        ' 如果有存储到本地的Cookie信息则先使用Cookie来测试是否仍然有效
+        If Conf2.Instance.BdVerifierConf.BdCookies Is Nothing OrElse Conf2.Instance.BdVerifierConf.BdCookies.Count = 0 Then
+            FrmWeb.Url = "https://pan.baidu.com/disk/home?#list/path=%2F&vmode=list"
+            FrmWeb.ShowDialog()
+        Else
+
+        End If
 
         btnLogin.Enabled = False
 
-            Dim loginedInfo = BdVerifier.GetLoginInfo(Operate.Html)
-            m_BdVerifier = New BdVerifier(Operate.Cookies, loginedInfo.BdsToken, loginedInfo.BdUSS)
-            Await LoadHomeDirInfoAsync()
+        m_BdVerifier = New BdVerifier(Conf2.Instance.BdVerifierConf)
+        Await LoadHomeDirInfoAsync()
 
         btnLogin.Enabled = True
-    End Sub
+    End Function
 
     Private Async Function LoadHomeDirInfoAsync() As Task
         Dim getRst = Await m_BdVerifier.GetHomeDirInfoAsync
@@ -47,9 +137,9 @@ Public Class FrmMain
             Return
         End If
 
-        Dim root As DirectoryEntity.Root
+        Dim root As BdVerifier.DirectoryEntity.Root
         Try
-            root = MSJsSerializer.Deserialize(Of DirectoryEntity.Root)(getRst.Message)
+            root = MSJsSerializer.Deserialize(Of BdVerifier.DirectoryEntity.Root)(getRst.Message)
         Catch ex As Exception
             Logger.WriteLine(ex, getRst.Message,,,)
             Windows2.DrawTipsTask(Me, "获取网盘首页目录失败，请联系开发者修复", 1000, False, False)
@@ -70,30 +160,37 @@ Public Class FrmMain
         tvDirectoryInfo.EndUpdate()
     End Function
 
-    Private Sub AppendSubNode(ByRef nodes As TreeNodeCollection, ByVal list As List(Of DirectoryEntity.List))
+    Private Sub AppendSubNode(ByRef nodes As TreeNodeCollection, ByVal list As List(Of BdVerifier.DirectoryEntity.List))
         If list Is Nothing Then Return
 
         For Each d In list
             Dim node As TreeNode
             If 1 = d.isdir Then
-                'If d.dir_empty = 0 Then
+                'If d.dir_empty = 1 Then
+                '    node = New TreeNode(d.server_filename, 0, 0)
+                'Else
                 ' 非空文件夹才可以展开（显示 +-）
                 Dim childNodes = New List(Of TreeNode) From {
                         New TreeNode("获取中...")
                     }
                 node = New TreeNode(d.server_filename, 0, 0, childNodes.ToArray)
-                'Else
-                '    node = New TreeNode(d.server_filename, 0, 0)
                 'End If
             Else
                 node = New TreeNode(d.server_filename, 1, 1)
             End If
-            node.Tag = New PathInfo(d.fs_id, d.isdir = 1)
+            node.Tag = New BdVerifier.PathInfo(d.fs_id, d.isdir = 1)
             nodes.Add(node)
         Next
     End Sub
 
     Private Sub tvDirectoryInfo_NodeMouseClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvDirectoryInfo.NodeMouseClick
+        ' 左键单击
+        If e.Button = MouseButtons.Left AndAlso e.Clicks = 1 Then
+            tvDirectoryInfo.SelectedNode = e.Node
+            CheckingSubNode(e)
+            Return
+        End If
+
         ' 右键单击时设置选中项
         If e.Button = MouseButtons.Right AndAlso e.Clicks = 1 Then
             tvDirectoryInfo.SelectedNode = e.Node
@@ -112,18 +209,13 @@ Public Class FrmMain
             ' 动态添加子目录
             Dim path = "/" & e.Node.FullPath.Replace("\", "/")
             Dim getRst = Await m_BdVerifier.GetDirInfoAsync(path)
-            Dim root = MSJsSerializer.Deserialize(Of DirectoryEntity.Root)(getRst.Message)
+            Dim root = MSJsSerializer.Deserialize(Of BdVerifier.DirectoryEntity.Root)(getRst.Message)
             tvDirectoryInfo.BeginUpdate()
             e.Node.Nodes.Clear()
             AppendSubNode(e.Node.Nodes, root.list)
 
             ' 勾选所有子目录
-            Dim tag = DirectCast(e.Node.Tag, PathInfo)
-            If tag.IsDir Then
-                For Each node As TreeNode In e.Node.Nodes
-                    node.Checked = e.Node.Checked
-                Next
-            End If
+            CheckSubNode(e)
         Catch ex As Exception
             Logger.WriteLine(ex)
         Finally
@@ -132,6 +224,27 @@ Public Class FrmMain
         End Try
     End Function
 
+    ''' <summary>
+    ''' 勾选
+    ''' </summary>
+    ''' <param name="e"></param>
+    Private Sub CheckingSubNode(e As TreeNodeMouseClickEventArgs)
+        Dim tag = DirectCast(e.Node.Tag, BdVerifier.PathInfo)
+        If tag.IsDir Then
+            For Each node As TreeNode In e.Node.Nodes
+                node.Checked = e.Node.Checked
+            Next
+        End If
+    End Sub
+
+    Private Sub CheckSubNode(e As TreeViewEventArgs)
+        Dim tag = DirectCast(e.Node.Tag, BdVerifier.PathInfo)
+        If tag.IsDir Then
+            For Each node As TreeNode In e.Node.Nodes
+                node.Checked = e.Node.Checked
+            Next
+        End If
+    End Sub
 
     Private Async Sub 检测ToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles 检测ToolStripMenuItem.Click
         Try
@@ -158,22 +271,22 @@ Public Class FrmMain
     ''' </summary>
     ''' <param name="tv"></param>
     ''' <returns></returns>
-    Private Function GetSelectedNode(ByVal tv As TreeView) As List(Of PathInfo)
+    Private Function GetSelectedNode(ByVal tv As TreeView) As List(Of BdVerifier.PathInfo)
         Dim parentOfSelectNode = If(tv.SelectedNode.Parent Is Nothing, tv.Nodes, tv.SelectedNode.Parent.Nodes)
         If parentOfSelectNode Is Nothing Then
-            Return New List(Of PathInfo)
+            Return New List(Of BdVerifier.PathInfo)
         End If
 
-        Dim path As New List(Of PathInfo)
+        Dim path As New List(Of BdVerifier.PathInfo)
         GetSelectedNode(parentOfSelectNode, path)
 
         Return path
     End Function
 
-    Private Sub GetSelectedNode(ByVal trc As TreeNodeCollection, ByRef path As List(Of PathInfo))
+    Private Sub GetSelectedNode(ByVal trc As TreeNodeCollection, ByRef path As List(Of BdVerifier.PathInfo))
         For Each node As TreeNode In trc
             If node.Checked Then
-                Dim newNode = TryCast(node.Tag, PathInfo)
+                Dim newNode = TryCast(node.Tag, BdVerifier.PathInfo)
                 newNode.FullPath = node.FullPath
                 path.Add(newNode)
                 Continue For
@@ -203,6 +316,7 @@ Public Class FrmMain
         txtVerifyReport.AppendText(Environment.NewLine)
         txtVerifyReport.AppendText(Environment.NewLine)
     End Sub
+
     Private Sub chkCheckAll_Click(sender As Object, e As EventArgs) Handles chkCheckAll.Click
         SetTreeNodeCheckState(tvDirectoryInfo.Nodes)
     End Sub
@@ -219,17 +333,17 @@ Public Class FrmMain
             tvDirectoryInfo.Enabled = False
             txtVerifyReport.Text = String.Empty
             AppendLog("分享开始")
-            Dim pwd = "ptyo"
-            Dim rst = Await m_BdVerifier.ShareAsync(DirectCast(tvDirectoryInfo.SelectedNode.Tag, PathInfo).Id.ToStringOfCulture, ShareExpirationDate.Forever, pwd)
 
-            Dim root = MSJsSerializer.Deserialize(Of ShareResultEntity.Root)(rst.Message)
+            Dim rst = Await m_BdVerifier.ShareAsync(DirectCast(tvDirectoryInfo.SelectedNode.Tag, BdVerifier.PathInfo).Id.ToStringOfCulture, Conf2.Instance.BdVerifierConf.ShareExpirationDate, Conf2.Instance.BdVerifierConf.SharePrivatePassword)
+
+            Dim root = MSJsSerializer.Deserialize(Of BdVerifier.ShareResultEntity.Root)(rst.Message)
             If root Is Nothing Then Return
 
             If root.errno = 0 Then
                 Dim sb As New StringBuilder
-                sb.AppendLine(GetShareErrorNoDescription(root.errno))
-                sb.Append("分享链接：").Append(root.link).Append(" 提取码：").AppendLine(pwd)
-                sb.Append("有效期：").AppendLine(ShareExpirationDate.Forever.GetDescription)
+                sb.AppendLine(root.show_msg)
+                sb.Append("分享链接：").Append(root.link).Append(" 提取码：").AppendLine(Conf2.Instance.BdVerifierConf.SharePrivatePassword)
+                sb.Append("有效期：").AppendLine(Conf2.Instance.BdVerifierConf.ShareExpirationDate.GetDescription)
                 AppendLog(sb.ToString)
             End If
         Catch ex As Exception
@@ -240,7 +354,26 @@ Public Class FrmMain
         End Try
     End Sub
 
+    Private Async Sub 重新加载ToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles 重新加载ToolStripMenuItem.Click
+        Await LoginAsync()
+    End Sub
+
     Private Sub chkCheckAll_CheckedChanged(sender As Object, e As EventArgs) Handles chkCheckAll.CheckedChanged
-        Debug.Print(Logger.MakeDebugString("要打印的字符串"))
+
+    End Sub
+
+    Private Sub btnCheckCache_Click(sender As Object, e As EventArgs) Handles btnCheckCache.Click
+        Using frm As New FrmShareCacheManage
+            frm.StartPosition = FormStartPosition.CenterScreen
+            frm.ShowDialog()
+        End Using
+    End Sub
+
+    Private Sub btnSetting_Click(sender As Object, e As EventArgs) Handles btnSetting.Click
+        Using frm As New FrmSetting
+            frm.Icon = Me.Icon
+            frm.StartPosition = FormStartPosition.CenterScreen
+            frm.ShowDialog()
+        End Using
     End Sub
 End Class
