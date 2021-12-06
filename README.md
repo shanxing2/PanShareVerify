@@ -10,10 +10,10 @@
 传说VIP不限分享次数，配合VIP食用效果更佳！ 
 
 ## Release
-[安装包(installer package)](https://github.com/shanxing2/PanShareVerify/releases)
+[安装包 installer package](https://github.com/shanxing2/PanShareVerify/releases)
 
 ## 使用方法
-运行Setup.exe安装，安装好之后会在桌面上生成图标，点击运行即可。
+运行[Setup.exe](http://120.25.207.165:800/ShanXingTechSoft/PanShareVerifier/publish.htm)安装，安装好之后会在桌面上生成图标，点击运行即可。
 
 ## 框架版本 
 .NET 4.8.1
