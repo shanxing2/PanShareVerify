@@ -15,6 +15,7 @@ Public Class FrmShareCacheManage
         InitializeComponent()
 
         ' 在 InitializeComponent() 调用之后添加任何初始化。
+
         m_SortInfo = (False, -1)
 
         BindData()
@@ -42,14 +43,15 @@ Public Class FrmShareCacheManage
     End Sub
 
     Private Sub dgvShareCacheInfo_DataBindingComplete(sender As Object, e As DataGridViewBindingCompleteEventArgs) Handles dgvShareCacheInfo.DataBindingComplete
-        dgvShareCacheInfo.AdjustDgv(False, DataGridViewAutoSizeColumnsMode.Fill, DataGridViewColumnSortMode.Programmatic)
+        dgvShareCacheInfo.AdjustDgv(False, DataGridViewAutoSizeColumnsMode.DisplayedCells, DataGridViewColumnSortMode.Programmatic)
 
         dgvShareCacheInfo.Columns(0).HeaderText = "MD5"
         dgvShareCacheInfo.Columns(1).HeaderText = "错误代码"
         dgvShareCacheInfo.Columns(2).HeaderText = "链接"
         dgvShareCacheInfo.Columns(3).HeaderText = "错误描述"
         dgvShareCacheInfo.Columns(4).HeaderText = "分享时间"
-        dgvShareCacheInfo.Columns(5).HeaderText = "路径"
+        dgvShareCacheInfo.Columns(5).HeaderText = "过期时间"
+        dgvShareCacheInfo.Columns(6).HeaderText = "路径"
 
         dgvShareCacheInfo.Columns(0).Width = 205
     End Sub
@@ -63,10 +65,6 @@ Public Class FrmShareCacheManage
         dgvShareCacheInfo.TrySortByColumnHeader(e.ColumnIndex, m_ShareCacheList)
 
         m_SortInfo = (Not m_SortInfo.Asc, e.ColumnIndex)
-    End Sub
-
-    Private Sub dgvShareCacheInfo_CellContentClick(sender As Object, e As DataGridViewCellEventArgs) Handles dgvShareCacheInfo.CellContentClick
-        Debug.Print(Logger.MakeDebugString("要打印的字符串"))
     End Sub
 
     Private Sub cmbErrorNo_Click(sender As Object, e As EventArgs) Handles cmbErrorNo.Click
@@ -101,7 +99,9 @@ Public Class FrmShareCacheManage
         BindData()
     End Sub
 
-    Public Shared Sub DeleteExpirationCache()
+    Public Shared Sub TryDeleteExpirationCache()
+        If Conf2.Instance.BdVerifierConf.Fs_Ids_Md5_ShareLinkDic Is Nothing Then Return
+
         Dim srs = Conf2.Instance.BdVerifierConf.Fs_Ids_Md5_ShareLinkDic.Where(Function(sr) sr.Value.ExpirationTime < Now).ToList
         For Each sr In srs
             Conf2.Instance.BdVerifierConf.Fs_Ids_Md5_ShareLinkDic.Remove(sr.Key)
@@ -144,4 +144,23 @@ Public Class FrmShareCacheManage
         e.Cancel = m_IsClickColHeaderOrRowHeader
     End Sub
 
+    Private Sub dgvShareCacheInfo_CellContentClick(sender As Object, e As DataGridViewCellEventArgs) Handles dgvShareCacheInfo.CellContentClick
+        If e.RowIndex = -1 Then Return
+        If e.ColumnIndex = -1 Then Return
+
+        If NameOf(ShareResultDisplayEntity.Link) = dgvShareCacheInfo.Columns(e.ColumnIndex).Name Then
+            Process.Start(dgvShareCacheInfo.CurrentCell.Value.ToString)
+        End If
+    End Sub
+
+    Private Sub dgvShareCacheInfo_CellMouseMove(sender As Object, e As DataGridViewCellMouseEventArgs) Handles dgvShareCacheInfo.CellMouseMove
+        If e.RowIndex = -1 Then Return
+        If e.ColumnIndex = -1 Then Return
+
+        If NameOf(ShareResultDisplayEntity.Link) = dgvShareCacheInfo.Columns(e.ColumnIndex).Name Then
+            Me.Cursor = Cursors.Hand
+        Else
+            Me.Cursor = DefaultCursor
+        End If
+    End Sub
 End Class

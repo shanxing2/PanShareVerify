@@ -55,7 +55,9 @@ Friend NotInheritable Class Conf2
             .SharePrivatePassword = "ptyo",
             .VerifyPrivatePassword = "6666",
             .VerifyExpirationDate = Net2.BaiduNetdisk.ShareExpirationDate.SevenDay,
-            .ShareExpirationDate = Net2.BaiduNetdisk.ShareExpirationDate.SevenDay
+            .ShareExpirationDate = Net2.BaiduNetdisk.ShareExpirationDate.SevenDay,
+            .Order = Net2.BaiduNetdisk.OrderMode.name,
+            .Desc = False
         }
     End Sub
 #End Region

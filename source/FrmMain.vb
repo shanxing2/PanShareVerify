@@ -9,7 +9,7 @@ Imports ShanXingTech.Net2.BaiduNetdisk
 Public Class FrmMain
 #Region "字段区"
     Private WithEvents m_BdVerifier As BdVerifier
-
+    Private ReadOnly m_NodeSorter As NodeSorter
 #End Region
 
 #Region "构造函数"
@@ -19,14 +19,18 @@ Public Class FrmMain
         InitializeComponent()
 
         ' 在 InitializeComponent() 调用之后添加任何初始化。
+        Me.Icon = My.Resources.icon
         Me.StartPosition = FormStartPosition.CenterScreen
 
         tvDirectoryInfo.ContextMenuStrip = cmsDirectoryInfo
         tvDirectoryInfo.ItemHeight = 20
         tvDirectoryInfo.CheckBoxes = True
 
-        ' 清楚过期缓存
-        FrmShareCacheManage.DeleteExpirationCache()
+        ' 清除过期缓存
+        FrmShareCacheManage.TryDeleteExpirationCache()
+
+        m_NodeSorter = New NodeSorter()
+        tvDirectoryInfo.TreeViewNodeSorter = m_NodeSorter
     End Sub
 #End Region
 
@@ -118,32 +122,21 @@ Public Class FrmMain
         If Conf2.Instance.BdVerifierConf.BdCookies Is Nothing OrElse Conf2.Instance.BdVerifierConf.BdCookies.Count = 0 Then
             FrmWeb.Url = "https://pan.baidu.com/disk/home?#list/path=%2F&vmode=list"
             FrmWeb.ShowDialog()
-        Else
-
         End If
 
         btnLogin.Enabled = False
 
         m_BdVerifier = New BdVerifier(Conf2.Instance.BdVerifierConf)
+        m_NodeSorter.Order = m_BdVerifier.Order
+        m_NodeSorter.Desc = m_BdVerifier.Desc
+
         Await LoadHomeDirInfoAsync()
 
         btnLogin.Enabled = True
     End Function
 
     Private Async Function LoadHomeDirInfoAsync() As Task
-        Dim getRst = Await m_BdVerifier.GetHomeDirInfoAsync
-        If Not getRst.Success Then
-            Windows2.DrawTipsTask(Me, "获取网盘首页目录失败，请联系开发者修复", 1000, False, False)
-            Return
-        End If
-
-        Dim root As BdVerifier.DirectoryEntity.Root
-        Try
-            root = MSJsSerializer.Deserialize(Of BdVerifier.DirectoryEntity.Root)(getRst.Message)
-        Catch ex As Exception
-            Logger.WriteLine(ex, getRst.Message,,,)
-            Windows2.DrawTipsTask(Me, "获取网盘首页目录失败，请联系开发者修复", 1000, False, False)
-        End Try
+        Dim root = Await m_BdVerifier.GetHomeDirInfoAsync()
 
 #Disable Warning BC42104 ' 在为变量赋值之前，变量已被使用
         If root Is Nothing Then Return
@@ -178,7 +171,9 @@ Public Class FrmMain
             Else
                 node = New TreeNode(d.server_filename, 1, 1)
             End If
-            node.Tag = New BdVerifier.PathInfo(d.fs_id, d.isdir = 1)
+            node.Tag = New BdVerifier.PathInfo(d.fs_id, d.isdir = 1) With {
+                .Size = d.size,
+                .ModifyTime = d.server_mtime}
             nodes.Add(node)
         Next
     End Sub
@@ -208,8 +203,7 @@ Public Class FrmMain
 
             ' 动态添加子目录
             Dim path = "/" & e.Node.FullPath.Replace("\", "/")
-            Dim getRst = Await m_BdVerifier.GetDirInfoAsync(path)
-            Dim root = MSJsSerializer.Deserialize(Of BdVerifier.DirectoryEntity.Root)(getRst.Message)
+            Dim root = Await m_BdVerifier.GetDirInfoAsync(path)
             tvDirectoryInfo.BeginUpdate()
             e.Node.Nodes.Clear()
             AppendSubNode(e.Node.Nodes, root.list)
@@ -247,14 +241,15 @@ Public Class FrmMain
     End Sub
 
     Private Async Sub 检测ToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles 检测ToolStripMenuItem.Click
+        Dim path = GetSelectedNode(tvDirectoryInfo)
+
+        If path.Count = 0 Then Return
+
         Try
             tvDirectoryInfo.Enabled = False
             txtVerifyReport.Text = String.Empty
             AppendLog("检测开始")
             lblStatus.Text = "检测开始"
-            Dim path = GetSelectedNode(tvDirectoryInfo)
-
-            If path.Count = 0 Then Return
 
             Await m_BdVerifier.CheckAsync(path)
         Catch ex As Exception
@@ -272,6 +267,8 @@ Public Class FrmMain
     ''' <param name="tv"></param>
     ''' <returns></returns>
     Private Function GetSelectedNode(ByVal tv As TreeView) As List(Of BdVerifier.PathInfo)
+        If tv Is Nothing Or tv.SelectedNode Is Nothing Then Return New List(Of BdVerifier.PathInfo)
+
         Dim parentOfSelectNode = If(tv.SelectedNode.Parent Is Nothing, tv.Nodes, tv.SelectedNode.Parent.Nodes)
         If parentOfSelectNode Is Nothing Then
             Return New List(Of BdVerifier.PathInfo)
@@ -329,6 +326,8 @@ Public Class FrmMain
     End Sub
 
     Private Async Sub 分享ToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles 分享ToolStripMenuItem.Click
+        If tvDirectoryInfo Is Nothing Or tvDirectoryInfo.SelectedNode Is Nothing Then Return
+
         Try
             tvDirectoryInfo.Enabled = False
             txtVerifyReport.Text = String.Empty
@@ -340,31 +339,44 @@ Public Class FrmMain
             If root Is Nothing Then Return
 
             If root.errno = 0 Then
+                Dim shareInfo = $"分享链接：{root.link} 提取码：{Conf2.Instance.BdVerifierConf.SharePrivatePassword}"
+                CopyToClipboard(shareInfo)
+
                 Dim sb As New StringBuilder
                 sb.AppendLine(root.show_msg)
-                sb.Append("分享链接：").Append(root.link).Append(" 提取码：").AppendLine(Conf2.Instance.BdVerifierConf.SharePrivatePassword)
+                sb.Append(shareInfo)
                 sb.Append("有效期：").AppendLine(Conf2.Instance.BdVerifierConf.ShareExpirationDate.GetDescription)
                 AppendLog(sb.ToString)
             End If
         Catch ex As Exception
             Logger.WriteLine(ex)
         Finally
-            AppendLog("分享完毕")
+            AppendLog("分享完毕，分享链接已复制到粘贴板")
             tvDirectoryInfo.Enabled = True
         End Try
     End Sub
 
     Private Async Sub 重新加载ToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles 重新加载ToolStripMenuItem.Click
-        Await LoginAsync()
+        Await LoadHomeDirInfoAsync()
     End Sub
 
-    Private Sub chkCheckAll_CheckedChanged(sender As Object, e As EventArgs) Handles chkCheckAll.CheckedChanged
+    Private Sub btnVerify_Click(sender As Object, e As EventArgs) Handles btnVerify.Click
+        检测ToolStripMenuItem.PerformClick()
+    End Sub
 
+    Private Sub btnShare_Click(sender As Object, e As EventArgs) Handles btnShare.Click
+        分享ToolStripMenuItem.PerformClick()
+    End Sub
+
+    Private Sub btnReload_Click(sender As Object, e As EventArgs) Handles btnReload.Click
+        重新加载ToolStripMenuItem.PerformClick()
     End Sub
 
     Private Sub btnCheckCache_Click(sender As Object, e As EventArgs) Handles btnCheckCache.Click
         Using frm As New FrmShareCacheManage
+            frm.Icon = Me.Icon
             frm.StartPosition = FormStartPosition.CenterScreen
+            frm.WindowState = FormWindowState.Maximized
             frm.ShowDialog()
         End Using
     End Sub
@@ -376,4 +388,49 @@ Public Class FrmMain
             frm.ShowDialog()
         End Using
     End Sub
+
+    Private Sub btnCancelCheck_Click(sender As Object, e As EventArgs) Handles btnCancelCheck.Click
+        m_BdVerifier.Cancel()
+    End Sub
+
+    Private Sub 排序ToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles 大小ToolStripMenuItem.Click, 文件名ToolStripMenuItem.Click, 修改日期ToolStripMenuItem.Click
+        Dim tsm = DirectCast(sender, ToolStripMenuItem)
+        If tsm Is Nothing Then Return
+
+        Dim order As OrderMode
+        Select Case tsm.Name
+            Case 文件名ToolStripMenuItem.Name
+                order = OrderMode.name
+            Case 大小ToolStripMenuItem.Name
+                order = OrderMode.size
+            Case 修改日期ToolStripMenuItem.Name
+                order = OrderMode.time
+        End Select
+
+        m_BdVerifier.ChangeOrder(order)
+        m_NodeSorter.Order = m_BdVerifier.Order
+
+        m_BdVerifier.ChangeDesc(Not m_BdVerifier.Desc)
+        For Each t As ToolStripItem In 排序ToolStripMenuItem.DropDownItems
+            t.Image = Nothing
+        Next
+        tsm.Image = If(m_BdVerifier.Desc, My.Resources.arrow_down, My.Resources.arrow_up)
+        m_NodeSorter.Desc = m_BdVerifier.Desc
+
+        tvDirectoryInfo.Sort()
+    End Sub
+
+    ''' <summary>
+    ''' 复制数据到系统粘贴板
+    ''' </summary>
+    ''' <param name="data"></param>
+    ''' <param name="tipsDisplayControl">在哪个控件/窗体上显示提示</param>
+    Private Sub CopyToClipboard(ByVal data As String)
+        Try
+            Clipboard.SetDataObject(data, False, 3, 100)
+        Catch ex As Exception
+            '
+        End Try
+    End Sub
 End Class
+
