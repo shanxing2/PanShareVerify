@@ -100,15 +100,10 @@ Public Class FrmWeb
         ' 启用消除网页加载嘟嘟声
         Web1.DisableNavigationSounds(False)
 
-        ' 有 existShop= 表示登录成功
-        ' 第一个可以判断主账号 第二个可以判断子账号
-        ' 另外，想要操作淘宝 cookie的httponly属性为true的cookie是必须的，其他可有可无
-        ' 而且，Domain一定要正确，有可能Web1.Document.Domain获取到的domain不是正确的，
-        ' 正确的Domain要以浏览器抓包为准
-        ' 如果已经登录 则获取cookie
+
         If Web1.Document Is Nothing Then Return
-        ' 经过观察，不管是在中国大陆还是在日本，有 百度网盘-全部文件#list/path=%2F&vmode=list 表示登录成功
-        If Not String.IsNullOrEmpty(Web1.Document.Title) AndAlso Web1.Document.Title.IndexOf("百度网盘-全部文件") > -1 Then
+        ' 经过观察，Cookie 有 "XFCS" 表示登录成功(新版旧版通用)
+        If Web1.Document.Cookie IsNot Nothing AndAlso Web1.Document.Cookie.IndexOf("XFCS") > -1 Then
             OperateUrl = Web1.Url.AbsoluteUri
 
             ' 如果已经登录 则获取cookie

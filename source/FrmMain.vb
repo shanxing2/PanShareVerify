@@ -7,6 +7,7 @@ Imports ShanXingTech.Net2
 Imports ShanXingTech.Net2.BaiduNetdisk
 
 Public Class FrmMain
+
 #Region "字段区"
     Private WithEvents m_BdVerifier As BdVerifier
     Private ReadOnly m_NodeSorter As NodeSorter
