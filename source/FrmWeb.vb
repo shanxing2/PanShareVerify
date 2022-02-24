@@ -123,4 +123,22 @@ Public Class FrmWeb
             End If
         End If
     End Sub
+
+    Private Sub Web1_DocumentCompleted(sender As Object, e As WebBrowserDocumentCompletedEventArgs) Handles Web1.DocumentCompleted
+        If Web1.Document Is Nothing Then Return
+
+        ' 将所有的链接的目标，指向本窗体
+        For Each archor As HtmlElement In Web1.Document.Links
+            archor.SetAttribute("target", "_self")
+        Next
+
+        ' 将所有的FORM的提交目标，指向本窗体
+        For Each form As HtmlElement In Web1.Document.Forms
+            form.SetAttribute("target", "_self")
+        Next
+    End Sub
+
+    Private Sub Web1_NewWindow(sender As Object, e As CancelEventArgs) Handles Web1.NewWindow
+        e.Cancel = True
+    End Sub
 End Class
