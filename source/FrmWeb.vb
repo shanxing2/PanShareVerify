@@ -1,17 +1,57 @@
 ﻿Imports System.ComponentModel
+Imports System.Net
+Imports System.Net.Http
+Imports System.Text
+Imports System.Text.RegularExpressions
+
+Imports Microsoft.Web.WebView2.Core
+Imports Microsoft.Web.WebView2.WinForms
+
 Imports ShanXingTech
 Imports ShanXingTech.Net2
+Imports ShanXingTech.Text2
 
 ''' <summary>
 ''' 闪星网络信息科技 Q2287190283
 ''' 神即道, 道法自然, 如来
 ''' </summary>
 Public Class FrmWeb
+#Region "事件区"
+    Public Event WebView2Initing As EventHandler(Of WebView2Info)
+#End Region
+
+#Region "字段区"
+    Private WithEvents m_WebView2 As WebView2
+    Private WithEvents m_CoreWebView2 As CoreWebView2
+#End Region
+#Region "属性区"
     ''' <summary>
     ''' 需要访问的地址
     ''' </summary>
-    Public Shared Property Url As String
-    Public Shared Property OperateUrl As String
+    Public Property Url As String
+    Public Property OperateUrl As String
+
+    Private m_NeedReload As Boolean
+    Public ReadOnly Property NeedReload() As Boolean
+        Get
+            Return m_NeedReload
+        End Get
+    End Property
+
+#End Region
+
+
+#Region "构造函数"
+    Sub New(ByVal url As String)
+
+        ' 此调用是设计器所必需的。
+        InitializeComponent()
+
+        ' 在 InitializeComponent() 调用之后添加任何初始化。
+
+        Me.Url = url
+    End Sub
+#End Region
 
 #Region "IDisposable Support"
     ' 要检测冗余调用
@@ -53,92 +93,209 @@ Public Class FrmWeb
 
 
     Private Sub FrmWeb_Load(sender As Object, e As EventArgs) Handles MyBase.Load
-        If Url.IsNullOrEmpty Then
-            MessageBox.Show(String.Concat("Url未初始化,请先设置", Me.Name, ".Url属性"), My.Resources.MsgCaption, MessageBoxButtons.OK, MessageBoxIcon.Error)
+        If m_WebView2 Is Nothing Then
+            m_WebView2 = New WebView2 With {
+                .Dock = DockStyle.Fill,
+                .Source = New Uri(Me.Url)
+            }
+
+            Me.Controls.Add(m_WebView2)
+        End If
+    End Sub
+
+    Private Sub m_WebView2_CoreWebView2InitializationCompleted(sender As Object, e As CoreWebView2InitializationCompletedEventArgs) Handles m_WebView2.CoreWebView2InitializationCompleted
+        With m_WebView2.CoreWebView2
+            .Settings.AreDevToolsEnabled = True
+            .Settings.IsPasswordAutosaveEnabled = False
+            .IsMuted = True
+        End With
+
+        m_CoreWebView2 = m_WebView2.CoreWebView2
+
+        AddHandler m_WebView2.CoreWebView2.NewWindowRequested, AddressOf m_CoreWebView2_NewWindowRequested
+    End Sub
+
+    Public Async Function CaptrueCookiesAsync() As Task
+        If Me.IsDisposed Then
             Return
         End If
 
-        ' 不显示脚本错误等信息
-        Web1.ScriptErrorsSuppressed = True
-        Web1.ChangeUserAgent("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 SE 2.X MetaSr 1.0")
-        ' 消除网页加载嘟嘟声
-        Web1.DisableNavigationSounds(True)
-        ' 如果已经登录 就不需要再次加载登录页了
-        If Not OperateUrl.IsNullOrEmpty Then Return
-
-        ' 改变程序内部IE浏览器默认的版本号
-        ' app.exe and app.vshost.exe
-        Dim appname As String = String.Concat(Process.GetCurrentProcess().ProcessName, ".exe")
-        ' 改变程序内部IE浏览器默认的版本号
-        ' 注意：如果是淘宝，想要快捷登录（识别已经登录的旺旺），需要设置 项目——属性——编译——目标CPU——勾选首选32位
-        Web1.SetVersionEmulation(BrowserEmulationMode.IE11, appname)
-
-#Region "多线程加载网页"
-        ' 多线程加载网页(WebBrowser只能是单线程单元)
-        ' 因为task模型不能直接设置Threading.ApartmentState.STA，所以这里目前只能用Threading.Thread实现 20170924
-        ' 此处必须加载先一个页面，这里用about:blank，否则会发生“无法获取“WebBrowser”控件的窗口句柄。不支持无窗口的 ActiveX 控件。”错误
-        Web1.Navigate("about:blank")
-        		Dim newThread As New Threading.Thread(Sub()
-												  Try
-													  Web1.Navigate(Url)
-												  Catch ex As Exception
-													  MessageBox.Show("加载网页失败，请关闭网页后重新打开再试", "温馨提示", MessageBoxButtons.OK, MessageBoxIcon.Error)
-												  End Try
-											  End Sub)
-        ' 多线程操作webbrowser控件，一定要设置为 STA 模式
-        newThread.TrySetApartmentState(Threading.ApartmentState.STA)
-
-        ' 获取程序内部使用的IE内核浏览器版本
-        'url = "http://ie.icoa.cn/"
-
-        ' 如果已经有登录之后的cookie  可以直接去往目标地址
-        newThread.Start()
-#End Region
-    End Sub
-
-    Private Sub FrmWeb_FormClosing(sender As Object, e As CancelEventArgs) Handles Me.FormClosing
-        ' 启用消除网页加载嘟嘟声
-        Web1.DisableNavigationSounds(False)
-
-
-        If Web1.Document Is Nothing Then Return
-        ' 经过观察，Cookie 有 "XFCS" 表示登录成功(新版旧版通用)
-        If Web1.Document.Cookie IsNot Nothing AndAlso Web1.Document.Cookie.IndexOf("XFCS") > -1 Then
-            OperateUrl = Web1.Url.AbsoluteUri
-
-            ' 如果已经登录 则获取cookie
-            If Not OperateUrl.IsNullOrEmpty Then
-                ' 获取webbrowser登录成功后的cookie,需要带上登录成功后的URL
-                ' 而且 也需要从 Web1.Document.Cookie 处获取cookie，否则会漏掉一些cookie(跟Operate.OperateUrl不属于同一个域的cookie)
-                ' 不同页面，Domain不一样，视具体情况而定
-                Conf2.Instance.BdVerifierConf.BdCookies.GetFromKeyValuePairs(Web1.Document.Cookie, OperateUrl)
-                Conf2.Instance.BdVerifierConf.BdCookies.GetFromUrl(OperateUrl)
-
-                HttpAsync.Instance.ReInit(Conf2.Instance.BdVerifierConf.BdCookies)
-
-                Dim html = Web1.Document.Body.InnerHtml
-                Dim loginedInfo = BdVerifier.GetLoginInfo(html)
-                Conf2.Instance.BdVerifierConf.BdsToken = loginedInfo.BdsToken
-                Conf2.Instance.BdVerifierConf.BdUSS = loginedInfo.BdUSS
-            End If
+        If m_CoreWebView2 Is Nothing Then
+            m_WebView2.Visible = False
         End If
+
+        Dim cookies = Await m_CoreWebView2.CookieManager.GetCookiesAsync(m_CoreWebView2.Source)
+        Dim cookieKvp = cookies.ToKeyValuePairs(False)
+
+        ' 经过观察，Cookie 有 "XFCS" 表示登录成功(新版旧版通用)
+        If cookies Is Nothing OrElse cookieKvp.IndexOf("XFCS") = -1 Then Return
+
+        OperateUrl = m_WebView2.Source.AbsoluteUri
+
+        ' 如果已经登录 则获取cookie
+        If OperateUrl.IsNullOrEmpty Then Return
+
+        Conf2.Instance.BdVerifierConf.BdCookies.GetFromKeyValuePairs(cookieKvp, OperateUrl)
+
+        HttpAsync.Instance.ReInit(Conf2.Instance.BdVerifierConf.BdCookies)
+
+        Dim loginedInfo = BdVerifier.GetLoginInfo(cookieKvp)
+        Conf2.Instance.BdVerifierConf.BdsToken = loginedInfo.BdsToken
+        Conf2.Instance.BdVerifierConf.BdUSS = loginedInfo.BdUSS
+    End Function
+
+    Private Async Sub Web1_DocumentCompleted(sender As Object, e As WebBrowserDocumentCompletedEventArgs)
+        Await LocateLoginFrameAsync()
     End Sub
 
-    Private Sub Web1_DocumentCompleted(sender As Object, e As WebBrowserDocumentCompletedEventArgs) Handles Web1.DocumentCompleted
-        If Web1.Document Is Nothing Then Return
-
-        ' 将所有的链接的目标，指向本窗体
-        For Each archor As HtmlElement In Web1.Document.Links
-            archor.SetAttribute("target", "_self")
-        Next
-
-        ' 将所有的FORM的提交目标，指向本窗体
-        For Each form As HtmlElement In Web1.Document.Forms
-            form.SetAttribute("target", "_self")
-        Next
+    Private Async Sub FrmWeb_SizeChanged(sender As Object, e As EventArgs) Handles Me.SizeChanged
+        Await LocateLoginFrameAsync()
     End Sub
 
-    Private Sub Web1_NewWindow(sender As Object, e As CancelEventArgs) Handles Web1.NewWindow
-        e.Cancel = True
+    ''' <summary>
+    ''' 定位到登录框（在浏览器窗口可见范围内能看到登录框）
+    ''' </summary>
+    Private Async Function LocateLoginFrameAsync() As Task
+        If m_CoreWebView2 Is Nothing Then Return
+
+        ' 底部齐平
+        Dim js = "var loginFrame = document.getElementById('login-middle');
+        if (loginFrame != null) {loginFrame.scrollIntoView(false)};
+        "
+
+        Await m_CoreWebView2.ExecuteScriptAsync(js)
+    End Function
+
+    Public Async Function EnsureWebview2Installsync(ByVal installSlient As Boolean) As Task(Of Boolean)
+        ' 判断是否安装  webview2 运行时
+        Dim errMessage As String
+        Dim dlgRst As DialogResult
+        Dim pv As Object
+        Try
+            pv = If(Environment.Is64BitOperatingSystem,
+                Microsoft.Win32.Registry.GetValue("HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"， "pv"， Nothing),
+                Microsoft.Win32.Registry.GetValue("HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"， "pv"， Nothing))
+        Catch ex As Exception
+            errMessage = ex.Message
+            Logger.WriteLine(ex)
+            Return False
+        End Try
+
+        If pv IsNot Nothing Then
+            Return True
+        End If
+
+#Disable Warning BC42104 ' 在为变量赋值之前，变量已被使用
+        If Not String.IsNullOrEmpty(errMessage) Then
+#Enable Warning BC42104 ' 在为变量赋值之前，变量已被使用
+            MessageBox.Show(errMessage, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            RaiseEvent WebView2Initing(Me, New WebView2Info(WebView2Info.InitStatus.Unknow))
+            Return False
+        End If
+
+        dlgRst = MessageBox.Show("软件检测到浏览器组件缺失，请问是否下载并安装？", "温馨提示", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+
+        If dlgRst = DialogResult.None OrElse dlgRst = DialogResult.No Then
+            Return False
+        End If
+
+        RaiseEvent WebView2Initing(Me, New WebView2Info(WebView2Info.InitStatus.DownloadBegin))
+        Dim runtimeFileFullPath = IO.Path.GetFullPath(IO.Path.Combine("temp", "MicrosoftEdgeWebview2Setup.exe"))
+        Dim downloadRuntimeSuccess = Await DownloadWebView2RuntimeAsync(runtimeFileFullPath, 3)
+        RaiseEvent WebView2Initing(Me, New WebView2Info(If(downloadRuntimeSuccess, WebView2Info.InitStatus.DownloadSuccess, WebView2Info.InitStatus.DownloadFailure)))
+
+        If Not downloadRuntimeSuccess Then
+            MessageBox.Show($"下载{If(downloadRuntimeSuccess, "成功", "失败")}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Return False
+        End If
+
+        RaiseEvent WebView2Initing(Me, New WebView2Info(WebView2Info.InitStatus.InstallBegin))
+        Dim installRuntimeSuccess = InstallWebview2Runtime(runtimeFileFullPath, installSlient)
+        RaiseEvent WebView2Initing(Me, New WebView2Info(If(installRuntimeSuccess, WebView2Info.InitStatus.InstallSuccess, WebView2Info.InitStatus.InstallFailure)))
+        If installRuntimeSuccess Then
+            MessageBox.Show("浏览器组件安装成功，重新打开此模块后生效", "温馨提示", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        Else
+            MessageBox.Show("浏览器组件安装失败，请检查网络后重新打开此模块", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End If
+
+        Return installRuntimeSuccess
+    End Function
+
+    ''' <summary>
+    ''' 下载Webview2运行时
+    ''' </summary>
+    ''' <param name="fileFullPath">运行时存储路径</param>
+    ''' <param name="tryTime">尝试下载次数</param>
+    ''' <returns></returns>
+    Private Async Function DownloadWebView2RuntimeAsync(ByVal fileFullPath As String, Optional ByVal tryTime As Integer = 3) As Task(Of Boolean)
+        Dim i As Integer
+        Dim success As Boolean
+        Do
+            Try
+                Dim uri As New Uri("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
+
+                'HttpAsync.Instance.ReInit(Nothing, False)
+                'Dim rst = Await HttpAsync.Instance.TryDownloadFileAsync("https://go.microsoft.com/fwlink/p/?LinkId=2124703", fileName, 1)
+                'Using webClient As New Net.WebClient
+                '    Dim ccc = Await webClient.DownloadDataTaskAsync(uri)
+                'End Using
+
+                Dim httpHandle As New HttpClientHandler With {
+                    .AllowAutoRedirect = False,
+                    .AutomaticDecompression = DecompressionMethods.GZip Or DecompressionMethods.Deflate
+                }
+                Using httpClient As New HttpClient(httpHandle)
+                    Dim rst2 = Await httpClient.GetAsync(uri)
+                    If rst2.StatusCode <> Net.HttpStatusCode.Moved Then
+                        success = False
+                        Exit Try
+                    End If
+
+                    Dim location = rst2.Headers.Location
+                    If location Is Nothing Then
+                        success = False
+                        Exit Try
+                    End If
+
+                    Dim fileBytes = Await httpClient.GetByteArrayAsync(location)
+                    If fileBytes.Length = 0 Then
+                        success = False
+                        Exit Try
+                    End If
+
+                    Dim path = IO.Path.GetDirectoryName(fileFullPath)
+
+                    If Not IO.Directory.Exists(path) Then
+                        IO.Directory.CreateDirectory(path)
+                    End If
+                    Using writer = New IO.FileStream(fileFullPath, IO.FileMode.Create, IO.FileAccess.Write, IO.FileShare.ReadWrite, 10240)
+                        Await writer.WriteAsync(fileBytes, 0, fileBytes.Length)
+                    End Using
+                End Using
+
+                success = True
+            Catch ex As Exception
+                Logger.WriteLine(ex)
+            End Try
+
+            i += 1
+        Loop Until success OrElse i >= tryTime
+
+        Return success
+    End Function
+
+    Private Function InstallWebview2Runtime(ByVal runtimeFileName As String, ByVal installSlient As Boolean) As Boolean
+        ' MicrosoftEdgeWebview2Setup.exe /silent /install
+        Dim cmdRst = Windows2.CmdRunOnlyReturnResult($"{runtimeFileName} /install{If(installSlient, " /slient", String.Empty)}")
+        'If cmdRst.Length > 0 Then
+        '    MessageBox.Show("浏览器组件安装失败，请联系开发者", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        'End If
+
+        Return cmdRst.Length = 0
+    End Function
+
+    Private Sub m_CoreWebView2_NewWindowRequested(sender As Object, e As CoreWebView2NewWindowRequestedEventArgs)
+        e.NewWindow = m_WebView2.CoreWebView2
+        e.Handled = True
     End Sub
 End Class

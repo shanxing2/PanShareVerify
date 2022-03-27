@@ -11,6 +11,7 @@ Public Class FrmMain
 #Region "字段区"
     Private WithEvents m_BdVerifier As BdVerifier
     Private ReadOnly m_NodeSorter As NodeSorter
+    Private WithEvents m_FrmWeb As FrmWeb
 #End Region
 
 #Region "构造函数"
@@ -119,29 +120,39 @@ Public Class FrmMain
     End Sub
 
     Private Async Function LoginAsync() As Task
-        ' 如果有存储到本地的Cookie信息则先使用Cookie来测试是否仍然有效
-        If Conf2.Instance.BdVerifierConf.BdCookies Is Nothing OrElse Conf2.Instance.BdVerifierConf.BdCookies.Count = 0 Then
-            FrmWeb.Url = "https://pan.baidu.com/disk/home?#list/path=%2F&vmode=list"
-            FrmWeb.ShowDialog()
-        End If
+        Try
+            btnLogin.Enabled = False
 
-        btnLogin.Enabled = False
+            ' 如果有存储到本地的Cookie信息则先使用Cookie来测试是否仍然有效
+            If Conf2.Instance.BdVerifierConf.BdCookies Is Nothing OrElse Conf2.Instance.BdVerifierConf.BdCookies.Count = 0 Then
+                If m_FrmWeb Is Nothing Then
+                    m_FrmWeb = New FrmWeb("https://pan.baidu.com/disk/home?#list/path=%2F&vmode=list")
+                End If
 
-        m_BdVerifier = New BdVerifier(Conf2.Instance.BdVerifierConf)
-        m_NodeSorter.Order = m_BdVerifier.Order
-        m_NodeSorter.Desc = m_BdVerifier.Desc
+                If Not Await m_FrmWeb.EnsureWebview2Installsync(False) Then
+                    Return
+                End If
 
-        Await LoadHomeDirInfoAsync()
+                m_FrmWeb.ShowDialog()
+                Await m_FrmWeb.CaptrueCookiesAsync()
+            End If
 
-        btnLogin.Enabled = True
+            m_BdVerifier = New BdVerifier(Conf2.Instance.BdVerifierConf)
+            m_NodeSorter.Order = m_BdVerifier.Order
+            m_NodeSorter.Desc = m_BdVerifier.Desc
+
+            Await LoadHomeDirInfoAsync()
+        Catch ex As Exception
+            Logger.WriteLine(ex)
+        Finally
+            btnLogin.Enabled = True
+        End Try
     End Function
 
     Private Async Function LoadHomeDirInfoAsync() As Task
         Dim root = Await m_BdVerifier.GetHomeDirInfoAsync()
 
-#Disable Warning BC42104 ' 在为变量赋值之前，变量已被使用
         If root Is Nothing Then Return
-#Enable Warning BC42104 ' 在为变量赋值之前，变量已被使用
 
         Dim imgList As New ImageList
         imgList.Images.Add(Image.FromFile(".\res\folder.png"))
@@ -346,7 +357,7 @@ Public Class FrmMain
                 Dim sb As New StringBuilder
                 sb.AppendLine(root.show_msg)
                 sb.Append(shareInfo)
-                sb.Append("有效期：").AppendLine(Conf2.Instance.BdVerifierConf.ShareExpirationDate.GetDescription)
+                sb.Append(" 有效期：").AppendLine(Conf2.Instance.BdVerifierConf.ShareExpirationDate.GetDescription)
                 AppendLog(sb.ToString)
             End If
         Catch ex As Exception
@@ -432,6 +443,10 @@ Public Class FrmMain
         Catch ex As Exception
             '
         End Try
+    End Sub
+
+    Private Sub m_FrmWeb_WebView2Initing(sender As Object, e As WebView2Info) Handles m_FrmWeb.WebView2Initing
+        AppendLog($"Microsoft Edge Webview2 Runtime Init:{e.Status.ToString}")
     End Sub
 End Class
 
